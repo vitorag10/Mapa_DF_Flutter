@@ -1,146 +1,158 @@
-import 'package:flutter/material.dart'; // Importa o pacote de UI do Flutter.
-import 'package:flutter_map/flutter_map.dart'; // Importa a biblioteca de mapas no Flutter.
-import 'package:latlong2/latlong.dart'; // Importa a biblioteca para lidar com coordenadas de latitude e longitude.
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
-// Função principal que inicia o aplicativo.
 void main() {
-  runApp(MyApp()); // Executa a aplicação 'MyApp'.
+  runApp(MyApp());
 }
 
-// Classe principal do aplicativo que define a interface.
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        primarySwatch: Colors.blue, // Define a cor primária do app.
-        visualDensity: VisualDensity.adaptivePlatformDensity, // Adapta a densidade da interface conforme a plataforma.
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: QgisPage(), // Define a página principal do app como 'QgisPage'.
+      home: QgisPage(),
     );
   }
 }
 
-// Define a página onde será feito o cadastro da linha.
 class QgisPage extends StatefulWidget {
   @override
-  _QgisPageState createState() => _QgisPageState(); // Cria o estado associado à página.
+  _QgisPageState createState() => _QgisPageState();
 }
 
-// Classe que gerencia o estado da página 'QgisPage'.
 class _QgisPageState extends State<QgisPage> {
-  List<LatLng> _polylinePoints = []; // Lista para armazenar os pontos da linha desenhada.
-  bool _isDrawing = false; // Variável de controle para saber se o modo de desenho está ativo.
-  bool _showOverlayMap = false; // Variável para mostrar o mapa de sobreposição (overlay).
+  List<LatLng> _polylinePoints = []; // Lista de pontos da linha desenhada
+  bool _isDrawing = false; // Controle para o modo de desenho
+  bool _showOverlayMap = false; // Controle para exibir ou ocultar a segunda camada de sobreposição
 
-  // Função que é chamada quando o mapa é clicado, adiciona um ponto se o modo de desenho estiver ativo.
   void _onMapTap(LatLng latLng) {
     if (_isDrawing) {
       setState(() {
-        _polylinePoints.add(latLng); // Adiciona o ponto à linha desenhada.
+        _polylinePoints.add(latLng); // Adiciona os pontos à linha desenhada
       });
     }
   }
 
-  // Ativa o modo de desenho e exibe o mapa de sobreposição.
+  // Inicia o modo de desenho na segunda camada
   void _startDrawing() {
     setState(() {
-      _isDrawing = true; // Ativa o modo de desenho.
-      _showOverlayMap = true; // Exibe o mapa com zoom 19 para desenho mais preciso.
+      _isDrawing = true;
+      _showOverlayMap = true; // Oculta a primeira camada
     });
   }
 
-  // Finaliza o modo de desenho.
+  // Finaliza o desenho e volta para a primeira camada
   void _stopDrawing() {
     setState(() {
-      _isDrawing = false; // Desativa o modo de desenho.
+      _isDrawing = false;
+      _showOverlayMap = false; // Mostra a primeira camada novamente após salvar
     });
   }
 
-  // Limpa todos os pontos da linha desenhada.
+  // Limpa os pontos desenhados
   void _clearPolyline() {
     setState(() {
-      _polylinePoints.clear(); // Limpa a lista de pontos.
+      _polylinePoints.clear();
     });
   }
 
-  // Remove o último ponto adicionado na linha desenhada.
+  // Remove o último ponto desenhado
   void _removeLastPoint() {
     setState(() {
       if (_polylinePoints.isNotEmpty) {
-        _polylinePoints.removeLast(); // Remove o último ponto da lista.
+        _polylinePoints.removeLast();
       }
     });
   }
 
-  // Função que constrói a interface da página.
+  // Reseta o estado do mapa e retorna para a tela inicial
+  void _resetMap() {
+    setState(() {
+      _polylinePoints.clear();
+      _isDrawing = false;
+      _showOverlayMap = false;
+    });
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => MyApp()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cadastrar Linha - Mapa do Distrito Federal'), // Define o título do app.
+        title: Text('Cadastrar Linha - Mapa do Distrito Federal'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: _resetMap, // Volta para a tela inicial e reseta o mapa
+        ),
         actions: [
-          if (_isDrawing) // Se o modo de desenho estiver ativo, exibe um botão de salvar.
+          if (_isDrawing)
             IconButton(
-              icon: Icon(Icons.check), // Ícone de "check" para finalizar o desenho.
-              onPressed: _stopDrawing, // Quando pressionado, finaliza o modo de desenho.
-              tooltip: 'Salvar Linha', // Texto que aparece ao passar o mouse sobre o botão.
+              icon: Icon(Icons.check),
+              onPressed: _stopDrawing, // Salva o desenho e volta para a primeira camada
+              tooltip: 'Salvar Linha',
             ),
         ],
       ),
       body: Stack(
         children: [
-          // Camada principal do mapa.
-          FlutterMap(
-            options: MapOptions(
-              onTap: (tapPosition, latLng) {
-                _onMapTap(latLng); // Permite adicionar pontos ao clicar no mapa.
-              },
-              initialCenter: LatLng(-15.7801, -47.9292), // Define o ponto central do mapa (Brasília).
-              initialZoom: 12.0, // Define o nível inicial de zoom do mapa.
+          // Exibe a primeira camada apenas quando não estiver desenhando
+          if (!_showOverlayMap)
+            FlutterMap(
+              options: MapOptions(
+                onTap: (tapPosition, latLng) {
+                  _onMapTap(latLng); // Permite adicionar pontos ao clicar no mapa
+                },
+                initialCenter: LatLng(-15.7801, -47.9292), // Coordenadas centrais de Brasília
+                initialZoom: 12.0, // Zoom inicial
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  subdomains: ['a', 'b', 'c'],
+                ),
+                // Camada de linha desenhada na primeira camada
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _polylinePoints,
+                      color: Colors.red,
+                      strokeWidth: 4.0,
+                    ),
+                  ],
+                ),
+              ],
             ),
-            children: [
-              TileLayer(
-                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", // Fonte dos tiles do mapa.
-                subdomains: ['a', 'b', 'c'], // Subdomínios para carregar os tiles.
-              ),
-              // Camada da linha desenhada no mapa.
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _polylinePoints, // Lista de pontos para desenhar a linha.
-                    color: Colors.red, // Cor da linha.
-                    strokeWidth: 4.0, // Largura da linha.
-                  ),
-                ],
-              ),
-            ],
-          ),
-          // Verifica se o mapa de sobreposição (zoom 19) está ativo.
+          // Segunda camada do mapa com sobreposição (zoom 19)
           if (_showOverlayMap)
             Positioned.fill(
               child: Opacity(
-                opacity: 0.7, // Define a opacidade (transparência) do mapa de sobreposição.
+                opacity: 0.9,
                 child: FlutterMap(
                   options: MapOptions(
                     onTap: (tapPosition, latLng) {
-                      _onMapTap(latLng); // Permite adicionar pontos na camada de sobreposição.
+                      _onMapTap(latLng); // Adiciona pontos também na segunda camada
                     },
-                    initialCenter: LatLng(-15.7801, -47.9292), // Centro da sobreposição.
-                    initialZoom: 19.0, // Zoom 19 para exibir detalhes das vias.
+                    initialCenter: LatLng(-15.7801, -47.9292), // Coordenadas centrais de Brasília
+                    initialZoom: 19.0, // Zoom 19 para maior precisão
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", // Fonte dos tiles do mapa.
-                      subdomains: ['a', 'b', 'c'], // Subdomínios para carregar os tiles.
+                      urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      subdomains: ['a', 'b', 'c'],
                     ),
-                    // Camada da linha desenhada na sobreposição do mapa.
                     PolylineLayer(
                       polylines: [
                         Polyline(
-                          points: _polylinePoints, // Lista de pontos para desenhar a linha.
-                          color: Colors.red, // Cor da linha.
-                          strokeWidth: 4.0, // Largura da linha.
+                          points: _polylinePoints, // Mostra os pontos da linha desenhada
+                          color: Colors.red,
+                          strokeWidth: 4.0,
                         ),
                       ],
                     ),
@@ -150,20 +162,26 @@ class _QgisPageState extends State<QgisPage> {
             ),
         ],
       ),
-      // Botões flutuantes para ações de desenho.
+      // Botões flutuantes para controle de desenho
       floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end, // Alinha os botões na parte inferior.
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          if (_isDrawing) // Exibe o botão de desfazer ponto apenas se estiver desenhando.
+          if (_isDrawing)
             FloatingActionButton(
-              onPressed: _removeLastPoint, // Remove o último ponto ao clicar.
-              child: Icon(Icons.undo), // Ícone de desfazer (undo).
-              tooltip: 'Desfazer último ponto', // Texto que aparece ao passar o mouse sobre o botão.
+              onPressed: _removeLastPoint, // Remove o último ponto
+              backgroundColor: Colors.orange,
+              child: Icon(Icons.undo, color: Colors.white),
+              tooltip: 'Desfazer último ponto',
             ),
+          SizedBox(height: 10),
           FloatingActionButton(
-            onPressed: _isDrawing ? _clearPolyline : _startDrawing, // Limpa ou inicia o modo de desenho.
-            child: Icon(_isDrawing ? Icons.clear : Icons.edit), // Ícone de limpar ou editar, dependendo do estado.
-            tooltip: _isDrawing ? 'Limpar Linha' : 'Iniciar Cadastro', // Texto do botão dependendo do estado.
+            onPressed: _isDrawing ? _clearPolyline : _startDrawing, // Limpa ou inicia o modo de desenho
+            backgroundColor: _isDrawing ? Colors.red : Colors.green,
+            child: Icon(
+              _isDrawing ? Icons.clear : Icons.edit,
+              color: Colors.white,
+            ),
+            tooltip: _isDrawing ? 'Limpar Linha' : 'Iniciar Cadastro',
           ),
         ],
       ),
