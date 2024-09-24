@@ -25,42 +25,40 @@ class QgisPage extends StatefulWidget {
 }
 
 class _QgisPageState extends State<QgisPage> {
-  List<LatLng> _polylinePoints = []; // Lista de pontos da linha desenhada
-  bool _isDrawing = false; // Controle para o modo de desenho
-  bool _showOverlayMap = false; // Controle para exibir ou ocultar a segunda camada de sobreposição
+  List<LatLng> _polylinePoints = [];
+  bool _isDrawing = false;
+  bool _showPolyline = true;
+  bool _showBaseLayer = true;
+  bool _showOverlayMap = false;
 
   void _onMapTap(LatLng latLng) {
     if (_isDrawing) {
       setState(() {
-        _polylinePoints.add(latLng); // Adiciona os pontos à linha desenhada
+        _polylinePoints.add(latLng);
       });
     }
   }
 
-  // Inicia o modo de desenho na segunda camada
   void _startDrawing() {
     setState(() {
       _isDrawing = true;
-      _showOverlayMap = true; // Oculta a primeira camada
+      _showOverlayMap = true;
     });
   }
 
-  // Finaliza o desenho e volta para a primeira camada
   void _stopDrawing() {
     setState(() {
       _isDrawing = false;
-      _showOverlayMap = false; // Mostra a primeira camada novamente após salvar
+      _showOverlayMap = false;
     });
   }
 
-  // Limpa os pontos desenhados
   void _clearPolyline() {
     setState(() {
       _polylinePoints.clear();
     });
   }
 
-  // Remove o último ponto desenhado
   void _removeLastPoint() {
     setState(() {
       if (_polylinePoints.isNotEmpty) {
@@ -69,7 +67,18 @@ class _QgisPageState extends State<QgisPage> {
     });
   }
 
-  // Reseta o estado do mapa e retorna para a tela inicial
+  void _toggleBaseLayer() {
+    setState(() {
+      _showBaseLayer = !_showBaseLayer;
+    });
+  }
+
+  void _togglePolylineLayer() {
+    setState(() {
+      _showPolyline = !_showPolyline;
+    });
+  }
+
   void _resetMap() {
     setState(() {
       _polylinePoints.clear();
@@ -89,93 +98,125 @@ class _QgisPageState extends State<QgisPage> {
         title: Text('Cadastrar Linha - Mapa do Distrito Federal'),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: _resetMap, // Volta para a tela inicial e reseta o mapa
+          onPressed: _resetMap,
         ),
         actions: [
           if (_isDrawing)
             IconButton(
               icon: Icon(Icons.check),
-              onPressed: _stopDrawing, // Salva o desenho e volta para a primeira camada
+              onPressed: _stopDrawing,
               tooltip: 'Salvar Linha',
             ),
         ],
       ),
-      body: Stack(
+      body: Row(
         children: [
-          // Exibe a primeira camada apenas quando não estiver desenhando
-          if (!_showOverlayMap)
-            FlutterMap(
-              options: MapOptions(
-                onTap: (tapPosition, latLng) {
-                  _onMapTap(latLng); // Permite adicionar pontos ao clicar no mapa
-                },
-                initialCenter: LatLng(-15.7801, -47.9292), // Coordenadas centrais de Brasília
-                initialZoom: 12.0, // Zoom inicial
-              ),
+          // Barra lateral para controle das camadas (parecido com QGIS)
+          Container(
+            width: 250,
+            color: Colors.grey[200],
+            child: ListView(
+              padding: EdgeInsets.all(8.0),
               children: [
-                TileLayer(
-                  urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                  subdomains: ['a', 'b', 'c'],
+                Text(
+                  'Camadas',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                // Camada de linha desenhada na primeira camada
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _polylinePoints,
-                      color: Colors.red,
-                      strokeWidth: 4.0,
-                    ),
-                  ],
+                CheckboxListTile(
+                  title: Text("Camada Mapa"),
+                  value: _showBaseLayer,
+                  onChanged: (value) {
+                    _toggleBaseLayer();
+                  },
+                ),
+                CheckboxListTile(
+                  title: Text("Camada Linha"),
+                  value: _showPolyline,
+                  onChanged: (value) {
+                    _togglePolylineLayer();
+                  },
                 ),
               ],
             ),
-          // Segunda camada do mapa com sobreposição (zoom 19)
-          if (_showOverlayMap)
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.9,
-                child: FlutterMap(
-                  options: MapOptions(
-                    onTap: (tapPosition, latLng) {
-                      _onMapTap(latLng); // Adiciona pontos também na segunda camada
-                    },
-                    initialCenter: LatLng(-15.7801, -47.9292), // Coordenadas centrais de Brasília
-                    initialZoom: 19.0, // Zoom 19 para maior precisão
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                      subdomains: ['a', 'b', 'c'],
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                if (!_showOverlayMap)
+                  FlutterMap(
+                    options: MapOptions(
+                      onTap: (tapPosition, latLng) {
+                        _onMapTap(latLng);
+                      },
+                      initialCenter: LatLng(-15.7801, -47.9292),
+                      initialZoom: 12.0,
                     ),
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: _polylinePoints, // Mostra os pontos da linha desenhada
-                          color: Colors.red,
-                          strokeWidth: 4.0,
+                    children: [
+                      if (_showBaseLayer)
+                        TileLayer(
+                          urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                          subdomains: ['a', 'b', 'c'],
                         ),
-                      ],
+                      if (_showPolyline)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _polylinePoints,
+                              color: Colors.red,
+                              strokeWidth: 4.0,
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                if (_showOverlayMap)
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.9,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          onTap: (tapPosition, latLng) {
+                            _onMapTap(latLng);
+                          },
+                          initialCenter: LatLng(-15.7801, -47.9292),
+                          initialZoom: 19.0,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                            subdomains: ['a', 'b', 'c'],
+                          ),
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: _polylinePoints,
+                                color: Colors.red,
+                                strokeWidth: 4.0,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
-      // Botões flutuantes para controle de desenho
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (_isDrawing)
             FloatingActionButton(
-              onPressed: _removeLastPoint, // Remove o último ponto
+              onPressed: _removeLastPoint,
               backgroundColor: Colors.orange,
               child: Icon(Icons.undo, color: Colors.white),
               tooltip: 'Desfazer último ponto',
             ),
           SizedBox(height: 10),
           FloatingActionButton(
-            onPressed: _isDrawing ? _clearPolyline : _startDrawing, // Limpa ou inicia o modo de desenho
+            onPressed: _isDrawing ? _clearPolyline : _startDrawing,
             backgroundColor: _isDrawing ? Colors.red : Colors.green,
             child: Icon(
               _isDrawing ? Icons.clear : Icons.edit,
