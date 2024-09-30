@@ -30,6 +30,7 @@ class _QgisPageState extends State<QgisPage> {
   bool _showPolyline = true;
   bool _showBaseLayer = true;
   bool _showOverlayMap = false;
+  LatLng? _lastTappedLatLng;
 
   void _onMapTap(LatLng latLng) {
     if (_isDrawing) {
@@ -37,6 +38,10 @@ class _QgisPageState extends State<QgisPage> {
         _polylinePoints.add(latLng);
       });
     }
+
+    setState(() {
+      _lastTappedLatLng = latLng;
+    });
   }
 
   void _startDrawing() {
@@ -111,7 +116,6 @@ class _QgisPageState extends State<QgisPage> {
       ),
       body: Row(
         children: [
-          // Barra lateral para controle das camadas (parecido com QGIS)
           Container(
             width: 250,
             color: Colors.grey[200],
@@ -125,6 +129,7 @@ class _QgisPageState extends State<QgisPage> {
                 CheckboxListTile(
                   title: Text("Camada Mapa"),
                   value: _showBaseLayer,
+                  activeColor: Colors.blue, // Cor da caixa de seleção
                   onChanged: (value) {
                     _toggleBaseLayer();
                   },
@@ -132,6 +137,7 @@ class _QgisPageState extends State<QgisPage> {
                 CheckboxListTile(
                   title: Text("Camada Linha"),
                   value: _showPolyline,
+                  activeColor: Colors.blue, // Cor da caixa de seleção
                   onChanged: (value) {
                     _togglePolylineLayer();
                   },
@@ -199,6 +205,77 @@ class _QgisPageState extends State<QgisPage> {
                       ),
                     ),
                   ),
+                // Exibir latitude e longitude dentro de caixas brancas com nomes em negrito
+                if (_lastTappedLatLng != null)
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: Colors.black),
+                              children: [
+                                TextSpan(
+                                  text: 'Latitude: ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '${_lastTappedLatLng!.latitude.toStringAsFixed(7)}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: Colors.black),
+                              children: [
+                                TextSpan(
+                                  text: 'Longitude: ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '${_lastTappedLatLng!.longitude.toStringAsFixed(7)}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -211,6 +288,7 @@ class _QgisPageState extends State<QgisPage> {
             FloatingActionButton(
               onPressed: _removeLastPoint,
               backgroundColor: Colors.orange,
+              
               child: Icon(Icons.undo, color: Colors.white),
               tooltip: 'Desfazer último ponto',
             ),
