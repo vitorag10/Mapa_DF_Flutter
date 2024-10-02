@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
 
 
 

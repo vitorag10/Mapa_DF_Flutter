@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -31,6 +33,22 @@ class _QgisPageState extends State<QgisPage> {
   bool _showBaseLayer = true;
   bool _showOverlayMap = false;
   LatLng? _lastTappedLatLng;
+  List<String> _layers = []; // Lista de camadas adicionadas
+
+  // Função para abrir o explorador de arquivos ao adicionar nova camada
+  Future<void> _addNewLayer() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['shp', 'geojson'],
+    );
+
+    if (result != null) {
+      File file = File(result.files.single.path!);
+      setState(() {
+        _layers.add(file.path); // Adiciona o caminho do arquivo à lista de camadas
+      });
+    }
+  }
 
   void _onMapTap(LatLng latLng) {
     if (_isDrawing) {
@@ -51,12 +69,6 @@ class _QgisPageState extends State<QgisPage> {
     });
   }
 
-  void _stopDrawing() {
-    setState(() {
-      _isDrawing = false;
-      _showOverlayMap = false;
-    });
-  }
 
   void _clearPolyline() {
     setState(() {
@@ -96,6 +108,22 @@ class _QgisPageState extends State<QgisPage> {
     );
   }
 
+  // Função para remover uma camada
+  void _removeLayer(String layerPath) {
+    setState(() {
+      _layers.remove(layerPath);
+    });
+  }
+
+  // Função para salvar a linha em GeoJSON
+  void _saveLineAsGeoJSON() {
+    // Aqui você pode implementar a lógica para salvar a linha como GeoJSON
+    // Isso pode envolver a conversão dos pontos da polilinha em um formato GeoJSON e salvar em um arquivo.
+    // Como exemplo, apenas imprimimos os pontos.
+    print("Salvando linha como GeoJSON: $_polylinePoints");
+    // Adicione o código para salvar em um arquivo ou mostrar um diálogo de confirmação
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,11 +134,15 @@ class _QgisPageState extends State<QgisPage> {
           onPressed: _resetMap,
         ),
         actions: [
+          // O botão de salvar aparece apenas no modo de desenho
           if (_isDrawing)
-            IconButton(
-              icon: Icon(Icons.check),
-              onPressed: _stopDrawing,
-              tooltip: 'Salvar Linha',
+            Container(
+              margin: EdgeInsets.only(right: 16.0),
+              child: FloatingActionButton(
+                onPressed: _saveLineAsGeoJSON,
+                backgroundColor: Color(0xFF003DA5), // Azul do GDF
+                child: Icon(Icons.save, color: Colors.white), // Ícone branco
+              ),
             ),
         ],
       ),
@@ -129,7 +161,7 @@ class _QgisPageState extends State<QgisPage> {
                 CheckboxListTile(
                   title: Text("Camada Mapa"),
                   value: _showBaseLayer,
-                  activeColor: Colors.blue, // Cor da caixa de seleção
+                  activeColor: Color(0xFF003DA5), // Cor da caixa de seleção
                   onChanged: (value) {
                     _toggleBaseLayer();
                   },
@@ -137,9 +169,38 @@ class _QgisPageState extends State<QgisPage> {
                 CheckboxListTile(
                   title: Text("Camada Linha"),
                   value: _showPolyline,
-                  activeColor: Colors.blue, // Cor da caixa de seleção
+                  activeColor: Color(0xFF003DA5), // Cor da caixa de seleção
                   onChanged: (value) {
                     _togglePolylineLayer();
+                  },
+                ),
+                Divider(),
+                Text(
+                  'Gerenciar Camadas',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _addNewLayer,
+                  icon: Icon(Icons.add, color: Colors.white), // Ícone branco
+                  label: Text(
+                    'Adicionar Camada',
+                    style: TextStyle(color: Colors.white), // Texto branco
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF003DA5), // Azul do GDF
+                  ),
+                ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _layers.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(_layers[index].split('/').last),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () => _removeLayer(_layers[index]),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -281,26 +342,30 @@ class _QgisPageState extends State<QgisPage> {
           ),
         ],
       ),
-      floatingActionButton: Column(
+      floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          if (_isDrawing)
+          if (_isDrawing) ...[
+            FloatingActionButton(
+              onPressed: _clearPolyline,
+              tooltip: 'Excluir Linha',
+              backgroundColor: Colors.red, // Vermelho para excluir
+              child: Icon(Icons.clear, color: Colors.white), // Ícone branco
+            ),
+            SizedBox(width: 10),
             FloatingActionButton(
               onPressed: _removeLastPoint,
-              backgroundColor: Colors.orange,
-              
-              child: Icon(Icons.undo, color: Colors.white),
-              tooltip: 'Desfazer último ponto',
+              tooltip: 'Desfazer Último Ponto',
+              backgroundColor: Colors.orange, // Laranja para desfazer
+              child: Icon(Icons.undo, color: Colors.white), // Ícone branco
             ),
-          SizedBox(height: 10),
+          ],
+          SizedBox(width: 10),
           FloatingActionButton(
-            onPressed: _isDrawing ? _clearPolyline : _startDrawing,
-            backgroundColor: _isDrawing ? Colors.red : Colors.green,
-            child: Icon(
-              _isDrawing ? Icons.clear : Icons.edit,
-              color: Colors.white,
-            ),
-            tooltip: _isDrawing ? 'Limpar Linha' : 'Iniciar Cadastro',
+            onPressed: _startDrawing,
+            tooltip: 'Desenhar Linha',
+            backgroundColor: Color(0xFF003DA5), // Azul do GDF
+            child: Icon(Icons.create, color: Colors.white), // Ícone branco
           ),
         ],
       ),
